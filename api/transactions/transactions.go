@@ -29,6 +29,10 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 	return &handler{cfg, db}
 }
 
+const (
+	cStmt = `INSERT INTO transaction (date, amount, category, transaction_type, note,image_url, spender_id) VALUES ($1, $2,$3, $4, $5, $6,$7) RETURNING id;`
+)
+
 func (h handler) GetAll(c echo.Context) error {
 	// rows, err := db
 	return nil

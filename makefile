@@ -45,3 +45,8 @@ health:
 spenders:
 	@echo "Getting the spenders..."
 	curl http://localhost:8080/api/v1/spenders
+
+.PHONY: pull-rebase
+pull-rebase:
+	@echo "Pulling git rebase..."
+	git stash && git pull -r origin main && git stash pop
