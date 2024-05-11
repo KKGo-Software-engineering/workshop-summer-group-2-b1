@@ -81,7 +81,7 @@ func (h handler) GetAll(c echo.Context) error {
 	return c.JSON(http.StatusOK, sps)
 }
 
-func (h handler) SpenderById(c echo.Context) error {
+func (h handler) SpenderTransactionById(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 	id := c.Param("id")
