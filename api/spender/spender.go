@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
+	"github.com/KKGo-Software-engineering/workshop-summer/api/transactions"
 	"github.com/kkgo-software-engineering/workshop/mlog"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -78,4 +79,29 @@ func (h handler) GetAll(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, sps)
+}
+
+func (h handler) SpenderById(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+	id := c.Param("id")
+
+	rows, err := h.db.QueryContext(ctx, "SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id = $1", id)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	var ts []transactions.Transaction
+	for rows.Next() {
+		var t transactions.Transaction
+		err = rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageUrl, &t.SpenderID)
+		if err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		ts = append(ts, t)
+	}
+
+	return c.JSON(http.StatusOK, ts)
 }
