@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"database/sql"
+	"net/http"
 	"time"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
@@ -34,9 +35,9 @@ func (h handler) GetAll(c echo.Context) error {
 }
 
 func (h handler) Create(c echo.Context) error {
-	return nil
+	return c.JSON(http.StatusCreated, "")
 }
 
 func (h handler) Update(c echo.Context) error {
-	return nil
+	return c.JSON(http.StatusOK, "updated")
 }
