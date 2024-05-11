@@ -145,7 +145,7 @@ func TestGetAllSpender(t *testing.T) {
 	})
 }
 
-func TestGetSpenderById(t *testing.T) {
+func TestSpenderTransactionById(t *testing.T) {
 	t.Run("get spender succesfully", func(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
