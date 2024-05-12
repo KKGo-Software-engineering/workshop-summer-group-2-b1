@@ -6,3 +6,4 @@ infra/iac/sonarqube/ansible/creds/*
 **/.infracost
 .env
 .envrc
+coverage.out

@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
+	"github.com/KKGo-Software-engineering/workshop-summer/api/mlog"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
 type Transaction struct {
@@ -34,8 +36,29 @@ const (
 )
 
 func (h handler) GetAll(c echo.Context) error {
-	// rows, err := db
-	return nil
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+
+	rows, err := h.db.QueryContext(ctx, `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction`)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	defer rows.Close()
+
+	var transactions []Transaction
+	for rows.Next() {
+		var t Transaction
+
+		if err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageUrl, &t.SpenderID); err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+
+		transactions = append(transactions, t)
+	}
+
+	return c.JSON(http.StatusOK, transactions)
 }
 
 func (h handler) Create(c echo.Context) error {

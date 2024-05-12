@@ -25,23 +25,48 @@ func TestGetAllTransaction(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequest(http.MethodGet, "/transactions", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
 
-		rows := sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(1, "HongJot", "hong@jot.ok").
-			AddRow(2, "JotHong", "jot@jot.ok")
-		mock.ExpectQuery(`SELECT id, name, email FROM spender`).WillReturnRows(rows)
+		dt := time.Date(2024, 05, 11, 9, 07, 29, 0, time.UTC)
+		rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
+			AddRow(1, dt, 100, "category", "expense", "notes", "http://www", 1).
+			AddRow(2, dt, 200, "category", "expense", "notes", "http://www", 1)
+
+		mock.ExpectQuery(`SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction`).
+			WillReturnRows(rows)
 
 		h := New(config.FeatureFlag{}, db)
 		err := h.GetAll(c)
 
 		assert.Nil(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `[
+			{
+			  "id": 1,
+			  "date": "2024-05-11T09:07:29Z",
+			  "amount": 100,
+			  "category": "category",
+			  "transaction_type": "expense",
+			  "note": "notes",
+			  "image_url": "http://www",
+			  "spender_id": 1
+			},
+		   {
+			  "id": 2,
+			  "date": "2024-05-11T09:07:29Z",
+			  "amount": 200,
+			  "category": "category",
+			  "transaction_type": "expense",
+			  "note": "notes",
+			  "image_url": "http://www",
+			  "spender_id": 1
+			}
+		  ]`, rec.Body.String())
 	})
 
 }

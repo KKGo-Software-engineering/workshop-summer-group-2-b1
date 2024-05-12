@@ -50,3 +50,8 @@ spenders:
 pull-rebase:
 	@echo "Pulling git rebase..."
 	git stash && git pull -r origin main && git stash pop
+
+.PHONY: coverage
+coverage:
+	@echo "Running coverage..."
+	go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
