@@ -159,13 +159,17 @@ func TestSpenderTransactionById(t *testing.T) {
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
-		dt := time.Date(2024, 05, 11, 9, 07, 29, 0, time.UTC)
+		dt := time.Date(2024, 05, 11, 0, 0, 0, 0, time.UTC)
 		rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
-			AddRow(1, dt, 100, "category", "expense", "notes", "http://www", 1).
-			AddRow(2, dt, 200, "category", "expense", "notes", "http://www", 1)
+			AddRow(1, dt, 100, "category", "expense", "notes", "url_to_image2", 1).
+			AddRow(2, dt, 200, "category", "expense", "notes", "url_to_image2", 1)
 
-		mock.ExpectQuery(`SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id = $1`).
-			WithArgs("1").
+		mock.ExpectQuery(`SELECT id, date, amount, category, transaction_type, note, image_url, spender_id
+		FROM transaction
+		WHERE spender_id = $1
+		LIMIT $2
+		OFFSET $3`).
+			WithArgs("1", "10", "1").
 			WillReturnRows(rows)
 
 		h := New(config.FeatureFlag{}, db)
@@ -173,28 +177,40 @@ func TestSpenderTransactionById(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `[
-			{
-			  "id": 1,
-			  "date": "2024-05-11T09:07:29Z",
-			  "amount": 100,
-			  "category": "category",
-			  "transaction_type": "expense",
-			  "note": "notes",
-			  "image_url": "http://www",
-			  "spender_id": 1
+		assert.JSONEq(t, `{
+			"transections": [
+			  {
+				"id": 1,
+				"date": "2024-05-11T00:00:00Z",
+				"amount": 100,
+				"category": "category",
+				"transaction_type": "expense",
+				"note": "notes",
+				"image_url": "url_to_image2",
+				"spender_id": 1
+			  },
+			  {
+				"id": 2,
+				"date": "2024-05-11T00:00:00Z",
+				"amount": 200,
+				"category": "category",
+				"transaction_type": "expense",
+				"note": "notes",
+				"image_url": "url_to_image2",
+				"spender_id": 1
+			  }
+			],
+			"summary": {
+			  "total_income": 0,
+			  "total_expenses": 300,
+			  "current_balance": -300
 			},
-		   {
-			  "id": 2,
-			  "date": "2024-05-11T09:07:29Z",
-			  "amount": 200,
-			  "category": "category",
-			  "transaction_type": "expense",
-			  "note": "notes",
-			  "image_url": "http://www",
-			  "spender_id": 1
+			"pagination": {
+			  "current_page": 1,
+			  "total_pages": 0,
+			  "per_page": 10
 			}
-		  ]`, rec.Body.String())
+		  }`, rec.Body.String())
 	})
 }
 

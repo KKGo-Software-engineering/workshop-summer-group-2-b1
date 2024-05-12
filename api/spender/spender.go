@@ -90,8 +90,21 @@ func (h handler) SpenderTransactionById(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 	id := c.Param("id")
+	page := c.QueryParam("page")
+	limit := c.QueryParam("limit")
 
-	rows, err := h.db.QueryContext(ctx, "SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id = $1", id)
+	if page == "" {
+		page = "1"
+	}
+	if limit == "" {
+		limit = "10"
+	}
+
+	rows, err := h.db.QueryContext(ctx, `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id
+	FROM transaction
+	WHERE spender_id = $1
+	LIMIT $2
+	OFFSET $3`, id, limit, page)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -108,7 +121,45 @@ func (h handler) SpenderTransactionById(c echo.Context) error {
 		ts = append(ts, t)
 	}
 
-	return c.JSON(http.StatusOK, ts)
+	exp := 0.0
+	inc := 0.0
+	for _, v := range ts {
+		if v.TransactionType == "expense" {
+			exp += v.Amount
+		} else if v.TransactionType == "income" {
+			inc += v.Amount
+		}
+	}
+
+	sum := transactions.Summary{
+		TotalExpenses:  exp,
+		TotalIncome:    inc,
+		CurrentBalance: inc - exp,
+	}
+
+	reCP, err := strconv.Atoi(page)
+	if err != nil {
+		logger.Error("scan error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	reL, err := strconv.Atoi(limit)
+	if err != nil {
+		logger.Error("scan error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	pg := transactions.Pagination{
+		CurrentPage: reCP,
+		TotalPage:   0,
+		PerPage:     reL,
+	}
+
+	ss := transactions.T{
+		Transections: ts,
+		Summary:      sum,
+		Pagination:   pg,
+	}
+
+	return c.JSON(http.StatusOK, ss)
 }
 
 func (h handler) SpenderTransactionByIdSummary(c echo.Context) error {
