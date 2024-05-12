@@ -147,16 +147,43 @@ func TestUpdateTransaction(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(`{"name": "HongJot", "email": "hong@jot.ok"}`))
+		dt := time.Date(2024, 05, 11, 9, 07, 29, 0, time.UTC)
+
+		stub := initStub(
+			Transaction{
+				Date:            dt,
+				Amount:          1000,
+				Category:        "Food",
+				Note:            "Lunch",
+				TransactionType: "expense",
+				ImageUrl:        "https://example.com/image1.jpg",
+				SpenderID:       1,
+			},
+			nil,
+		)
+		body, _ := json.Marshal(stub.transaction)
+
+		req := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(string(body)))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
 
-		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
-		mock.ExpectQuery("cStmt").WithArgs("HongJot", "hong@jot.ok").WillReturnRows(row)
+		mock.ExpectExec(uStmt).
+			WithArgs(
+				stub.transaction.Date,
+				stub.transaction.Amount,
+				stub.transaction.Category,
+				stub.transaction.TransactionType,
+				stub.transaction.Note,
+				stub.transaction.ImageUrl,
+				stub.transaction.SpenderID,
+				1,
+			).WillReturnResult(sqlmock.NewResult(1, 1))
 		cfg := config.FeatureFlag{EnableCreateSpender: true}
 
 		h := New(cfg, db)
@@ -164,5 +191,66 @@ func TestUpdateTransaction(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{
+			"id": 1,
+			"date": "2024-05-11T09:07:29Z",
+			"amount": 1000,
+			"category": "Food",
+			"transaction_type": "expense",
+			"note": "Lunch",
+			"image_url": "https://example.com/image1.jpg",
+			"spender_id": 1
+		}`, rec.Body.String())
+	})
+
+	t.Run("update transaction not found", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		dt := time.Date(2024, 05, 11, 9, 07, 29, 0, time.UTC)
+
+		stub := initStub(
+			Transaction{
+				Date:            dt,
+				Amount:          1000,
+				Category:        "Food",
+				Note:            "Lunch",
+				TransactionType: "expense",
+				ImageUrl:        "https://example.com/image1.jpg",
+				SpenderID:       1,
+			},
+			nil,
+		)
+		body, _ := json.Marshal(stub.transaction)
+
+		req := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(string(body)))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectExec(uStmt).
+			WithArgs(
+				stub.transaction.Date,
+				stub.transaction.Amount,
+				stub.transaction.Category,
+				stub.transaction.TransactionType,
+				stub.transaction.Note,
+				stub.transaction.ImageUrl,
+				stub.transaction.SpenderID,
+				1,
+			).WillReturnResult(sqlmock.NewResult(0, 0))
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+
+		h := New(cfg, db)
+		err := h.Update(c)
+
+		assert.Nil(t, err)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Equal(t, "\"transaction not found\"\n", rec.Body.String())
 	})
 }

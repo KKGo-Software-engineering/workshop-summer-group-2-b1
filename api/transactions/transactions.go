@@ -3,6 +3,7 @@ package transactions
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
@@ -51,6 +52,7 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 
 const (
 	cStmt = `INSERT INTO transaction (date, amount, category, transaction_type, note,image_url, spender_id) VALUES ($1, $2,$3, $4, $5, $6,$7) RETURNING id;`
+	uStmt = `UPDATE transaction SET date = $1, amount = $2, category = $3, transaction_type = $4, note = $5, image_url = $6, spender_id = $7 WHERE id = $8;`
 )
 
 func (h handler) GetAll(c echo.Context) error {
@@ -109,5 +111,39 @@ func (h handler) Create(c echo.Context) error {
 }
 
 func (h handler) Update(c echo.Context) error {
-	return c.JSON(http.StatusOK, "updated")
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+	id := c.Param("id")
+	idi, err := strconv.ParseInt(id, 10, 64)
+
+	if err != nil {
+		logger.Error("bad request body", zap.Error(err))
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	var t Transaction
+	err = c.Bind(&t)
+	if err != nil {
+		logger.Error("bad request body", zap.Error(err))
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	result, err := h.db.ExecContext(ctx, uStmt, t.Date, t.Amount, t.Category, t.TransactionType, t.Note, t.ImageUrl, t.SpenderID, idi)
+	if err != nil {
+		logger.Error("query row error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		logger.Error("query row error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if rows == 0 {
+		return c.JSON(http.StatusNotFound, "transaction not found")
+	}
+
+	t.ID = idi
+	return c.JSON(http.StatusOK, t)
 }
