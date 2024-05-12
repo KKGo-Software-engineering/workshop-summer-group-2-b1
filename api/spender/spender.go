@@ -18,6 +18,10 @@ type Spender struct {
 	Email string `json:"email"`
 }
 
+type SpenderSummary struct {
+	Summary transactions.Summary `json:"summary"`
+}
+
 type handler struct {
 	flag config.FeatureFlag
 	db   *sql.DB
@@ -126,7 +130,7 @@ func (h handler) SpenderTransactionByIdSummary(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	ts := transactions.T{
+	ss := SpenderSummary{
 		Summary: transactions.Summary{
 			TotalIncome:    income,
 			TotalExpenses:  expense,
@@ -134,5 +138,5 @@ func (h handler) SpenderTransactionByIdSummary(c echo.Context) error {
 		},
 	}
 
-	return c.JSON(http.StatusOK, ts)
+	return c.JSON(http.StatusOK, ss)
 }

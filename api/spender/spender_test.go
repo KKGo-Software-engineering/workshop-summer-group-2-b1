@@ -232,16 +232,10 @@ func TestSpenderTransactionByIdSummary(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.JSONEq(t, `{
-			"transections": null,
 			"summary": {
 			  "total_income": 300,
 			  "total_expenses": 300,
 			  "current_balance": 0
-			},
-			"pagination": {
-			  "current_page": 0,
-			  "total_pages": 0,
-			  "per_page": 0
 			}
 		  }`, rec.Body.String())
 	})
