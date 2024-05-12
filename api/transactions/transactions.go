@@ -80,7 +80,32 @@ func (h handler) GetAll(c echo.Context) error {
 }
 
 func (h handler) Create(c echo.Context) error {
-	return c.JSON(http.StatusCreated, "")
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+	var t Transaction
+	err := c.Bind(&t)
+	if err != nil {
+		logger.Error("bad request body", zap.Error(err))
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	var lastInsertId int64
+	err = h.db.QueryRowContext(ctx, cStmt, t.Date, t.Amount, t.Category, t.TransactionType, t.Note, t.ImageUrl, t.SpenderID).Scan(&lastInsertId)
+	if err != nil {
+		logger.Error("query row error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, Transaction{
+		ID:              lastInsertId,
+		Date:            t.Date,
+		Amount:          t.Amount,
+		Category:        t.Category,
+		TransactionType: t.TransactionType,
+		Note:            t.Note,
+		ImageUrl:        t.ImageUrl,
+		SpenderID:       t.SpenderID,
+	})
 }
 
 func (h handler) Update(c echo.Context) error {

@@ -20,6 +20,15 @@ type StubTransaction struct {
 	expectToCall map[string]bool
 }
 
+func initStub(trans Transaction, err error) StubTransaction {
+	stub := StubTransaction{
+		err:          err,
+		transaction:  trans,
+		expectToCall: map[string]bool{},
+	}
+	return stub
+}
+
 func TestGetAllTransaction(t *testing.T) {
 	t.Run("get all transaction successfully", func(t *testing.T) {
 		e := echo.New()
@@ -75,15 +84,21 @@ func TestCreateTransaction(t *testing.T) {
 	t.Run("create transaction successfully", func(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
-		stub := StubTransaction{
-			transaction: Transaction{
-				Date:      time.Now(),
-				Amount:    100,
-				Category:  "Food",
-				Note:      "Test",
-				SpenderID: 1,
+
+		dt := time.Date(2024, 05, 11, 9, 07, 29, 0, time.UTC)
+
+		stub := initStub(
+			Transaction{
+				Date:            dt,
+				Amount:          1000,
+				Category:        "Food",
+				Note:            "Lunch",
+				TransactionType: "expense",
+				ImageUrl:        "https://example.com/image1.jpg",
+				SpenderID:       1,
 			},
-		}
+			nil,
+		)
 		body, _ := json.Marshal(stub.transaction)
 
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body)))
@@ -113,6 +128,17 @@ func TestCreateTransaction(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.JSONEq(t, `{
+			"id": 1,
+			"date": "2024-05-11T09:07:29Z",
+			"amount": 1000,
+			"category": "Food",
+			"transaction_type": "expense",
+			"note": "Lunch",
+			"image_url": "https://example.com/image1.jpg",
+			"spender_id": 1
+		}`, rec.Body.String())
+
 	})
 }
 
