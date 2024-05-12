@@ -13,6 +13,12 @@ test-it:
 	@echo "Running integration tests..."
 	go test -v -run "Test.*IT" -tags=integration ./...
 
+PHONY: test-coverage
+test-coverage:
+	go test -cover ./... -v
+	go test -coverprofile=coverage.out ./...
+
+
 PHONY: test-it-docker
 test-it-docker:
 	docker-compose -f docker-compose.it.test.yaml down && \

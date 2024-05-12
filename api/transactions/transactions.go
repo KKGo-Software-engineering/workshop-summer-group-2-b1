@@ -22,6 +22,24 @@ type Transaction struct {
 	SpenderID       int64     `json:"spender_id"`
 }
 
+type Summary struct {
+	TotalIncome    float64 `json:"total_income"`
+	TotalExpenses  float64 `json:"total_expenses"`
+	CurrentBalance float64 `json:"current_balance"`
+}
+
+type Pagination struct {
+	CurrentPage int `json:"current_page"`
+	TotalPage   int `json:"total_pages"`
+	PerPage     int `json:"per_page"`
+}
+
+type T struct {
+	Transections []Transaction `json:"transections"`
+	Summary      Summary       `json:"summary"`
+	Pagination   Pagination    `json:"pagination"`
+}
+
 type handler struct {
 	flag config.FeatureFlag
 	db   *sql.DB
