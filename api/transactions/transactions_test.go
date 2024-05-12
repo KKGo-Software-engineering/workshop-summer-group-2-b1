@@ -351,6 +351,27 @@ func TestUpdateTransaction(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "invalid character")
 	})
+
+	t.Run("update transaction failed when bad path param body", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{ bad request body }`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+		c.SetParamNames("id")
+		c.SetParamValues("noneint")
+
+		h := New(cfg, nil)
+		err := h.Update(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "invalid syntax")
+	})
+
 }
 
 func TestGetSummary(t *testing.T) {
