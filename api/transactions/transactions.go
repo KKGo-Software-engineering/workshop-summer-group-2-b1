@@ -147,3 +147,14 @@ func (h handler) Update(c echo.Context) error {
 	t.ID = idi
 	return c.JSON(http.StatusOK, t)
 }
+
+func (h handler) GetSummary(id int, t_type string) (float64, error) {
+	rows := h.db.QueryRow(`SELECT SUM(amount) FROM transaction WHERE spender_id = $1 AND transaction_type = $2`, id, t_type)
+
+	sum := 0.0
+	if err := rows.Scan(&sum); err != nil {
+		return 0, err
+	}
+
+	return sum, nil
+}

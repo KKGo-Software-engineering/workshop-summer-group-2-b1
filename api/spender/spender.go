@@ -3,6 +3,7 @@ package spender
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
 	"github.com/KKGo-Software-engineering/workshop-summer/api/transactions"
@@ -101,6 +102,36 @@ func (h handler) SpenderTransactionById(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		ts = append(ts, t)
+	}
+
+	return c.JSON(http.StatusOK, ts)
+}
+
+func (h handler) SpenderTransactionByIdSummary(c echo.Context) error {
+	logger := mlog.L(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	hs := transactions.New(h.flag, h.db)
+	income, err := hs.GetSummary(id, "income")
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	expense, err := hs.GetSummary(id, "expense")
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	ts := transactions.T{
+		Summary: transactions.Summary{
+			TotalIncome:    income,
+			TotalExpenses:  expense,
+			CurrentBalance: income - expense,
+		},
 	}
 
 	return c.JSON(http.StatusOK, ts)

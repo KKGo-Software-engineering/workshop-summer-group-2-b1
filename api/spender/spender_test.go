@@ -197,3 +197,52 @@ func TestSpenderTransactionById(t *testing.T) {
 		  ]`, rec.Body.String())
 	})
 }
+
+func TestSpenderTransactionByIdSummary(t *testing.T) {
+
+	t.Run("get spender summary succesfully", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transactions/summary", nil)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		inRow := sqlmock.NewRows([]string{"sum"}).
+			AddRow(300)
+		exRow := sqlmock.NewRows([]string{"sum"}).
+			AddRow(300)
+
+		mock.ExpectQuery(`SELECT SUM(amount) FROM transaction WHERE spender_id = $1 AND transaction_type = $2`).
+			WithArgs(1, "income").
+			WillReturnRows(inRow)
+		mock.ExpectQuery(`SELECT SUM(amount) FROM transaction WHERE spender_id = $1 AND transaction_type = $2`).
+			WithArgs(1, "expense").
+			WillReturnRows(exRow)
+
+		h := New(config.FeatureFlag{}, db)
+		err := h.SpenderTransactionByIdSummary(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{
+			"transections": null,
+			"summary": {
+			  "total_income": 300,
+			  "total_expenses": 300,
+			  "current_balance": 0
+			},
+			"pagination": {
+			  "current_page": 0,
+			  "total_pages": 0,
+			  "per_page": 0
+			}
+		  }`, rec.Body.String())
+	})
+}

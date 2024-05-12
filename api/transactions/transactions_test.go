@@ -254,3 +254,23 @@ func TestUpdateTransaction(t *testing.T) {
 		assert.Equal(t, "\"transaction not found\"\n", rec.Body.String())
 	})
 }
+
+func TestGetSummary(t *testing.T) {
+	t.Run("update transaction successfully", func(t *testing.T) {
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"sum"}).
+			AddRow(300)
+
+		mock.ExpectQuery(`SELECT SUM(amount) FROM transaction WHERE spender_id = $1 AND transaction_type = $2`).
+			WithArgs(1, "expense").
+			WillReturnRows(rows)
+
+		h := New(config.FeatureFlag{}, db)
+		got, err := h.GetSummary(1, "expense")
+
+		assert.NoError(t, err)
+		assert.Equal(t, 300.0, got)
+	})
+}
