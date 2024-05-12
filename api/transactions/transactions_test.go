@@ -140,6 +140,53 @@ func TestCreateTransaction(t *testing.T) {
 		}`, rec.Body.String())
 
 	})
+	t.Run("create transaction failed when bad request body", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{ bad request body }`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+
+		h := New(cfg, nil)
+		err := h.Create(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "invalid character")
+	})
+	t.Run("create transaction failed on database (feature toggle is enable) ", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{
+			"date": "2024-05-11T09:07:29Z",
+			"amount": 1000,
+			"category": "Food",
+			"transaction_type": "expense",
+			"note": "Lunch",
+			"image_url": "https://example.com/image1.jpg",
+			"spender_id": 1
+		}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectQuery(cStmt).WithArgs("2024-05-11T09:07:29Z", 1000, "Food", "expense", "Lunch", "https://example.com/image1.jpg", "hong@jot.ok").WillReturnError(assert.AnError)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+
+		h := New(cfg, db)
+		err := h.Create(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
 }
 
 func TestUpdateTransaction(t *testing.T) {
@@ -252,6 +299,57 @@ func TestUpdateTransaction(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 		assert.Equal(t, "\"transaction not found\"\n", rec.Body.String())
+	})
+	t.Run("update transaction failed on database (feature toggle is enable) ", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{
+			"date": "2024-05-11T09:07:29Z",
+			"amount": 1000,
+			"category": "Food",
+			"transaction_type": "expense",
+			"note": "Lunch",
+			"image_url": "https://example.com/image1.jpg",
+			"spender_id": 1
+		}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectQuery(uStmt).WithArgs("2024-05-11T09:07:29Z", 1000, "Food", "expense", "Lunch", "https://example.com/image1.jpg", "1", "1").WillReturnError(assert.AnError)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+
+		h := New(cfg, db)
+		err := h.Update(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("update transaction failed when bad request body", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{ bad request body }`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		h := New(cfg, nil)
+		err := h.Update(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "invalid character")
 	})
 }
 
